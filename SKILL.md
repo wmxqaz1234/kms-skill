@@ -37,13 +37,13 @@ KMS_USERNAME → $KMS_USERNAME
 
 ## 核心约束
 
-- **🔴 创建/修改范围限制：只允许在 Avince（https://kms.fineres.com/display/jiandaoyun/Avince，pageId: 1352284265）下创建和修改子页面。禁止在其他页面下创建/修改内容。查看和搜索不受此限制。**
-- **⚠️ 操作确认：任何创建、修改操作必须先向用户确认内容和意图，获得明确同意后才执行。不得未经确认直接写入/修改页面。**
 - 必须先在连接中心配置 KMS 凭据才能使用
 - 所有操作需要相应的 KMS 权限
 - 更新页面时必须提供正确的版本号
 - 页面内容使用 Confluence Storage Format (HTML-like)
-- URL 中的中文参数必须进行 URL 编码
+- **⚠️ 重要：URL 中的中文参数必须进行 URL 编码**
+- **🔴 创建/修改范围限制：只允许在 Avince（https://kms.fineres.com/display/jiandaoyun/Avince，pageId: 1352284265）下创建和修改子页面。禁止在其他空间或页面下创建/修改内容。查看和搜索不受此限制。**
+- **⚠️ 操作确认：任何创建、修改、删除操作必须先向用户确认内容和意图，获得明确同意后才执行。不得未经确认直接写入/修改/删除页面。**
 
 ## 执行步骤
 
@@ -62,9 +62,9 @@ KMS_USERNAME → $KMS_USERNAME
 ```bash
 # 获取页面详细信息和内容
 curl -X GET \
-  -H "Authorization: Bearer $CVO_CONN_KMS_API_TOKEN" \
+  -H "Authorization: Bearer $KMS_API_TOKEN" \
   -H "Content-Type: application/json" \
-  "$CVO_CONN_KMS_BASE_URL/rest/api/content/${PAGE_ID}?expand=body.storage,version,space" \
+  "$KMS_BASE_URL/rest/api/content/${PAGE_ID}?expand=body.storage,version,space" \
   -s
 ```
 
@@ -103,9 +103,9 @@ curl -X GET \
 # 创建新页面 - 使用 heredoc 格式更可靠
 curl -X POST \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $CVO_CONN_KMS_API_TOKEN" \
+  -H "Authorization: Bearer $KMS_API_TOKEN" \
   -d @- \
-  "$CVO_CONN_KMS_BASE_URL/rest/api/content" -s << 'EOF'
+  "$KMS_BASE_URL/rest/api/content" -s << 'EOF'
 {
   "type": "page",
   "title": "页面标题",
@@ -152,8 +152,8 @@ EOF
 ```bash
 curl -X GET \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $CVO_CONN_KMS_API_TOKEN" \
-  "$CVO_CONN_KMS_BASE_URL/rest/api/content/${PAGE_ID}?expand=body.storage,version" \
+  -H "Authorization: Bearer $KMS_API_TOKEN" \
+  "$KMS_BASE_URL/rest/api/content/${PAGE_ID}?expand=body.storage,version" \
   -s
 ```
 
@@ -177,9 +177,9 @@ NEW_VERSION=$((CURRENT_VERSION + 1))
 
 curl -X PUT \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $CVO_CONN_KMS_API_TOKEN" \
+  -H "Authorization: Bearer $KMS_API_TOKEN" \
   -d @- \
-  "$CVO_CONN_KMS_BASE_URL/rest/api/content/${PAGE_ID}" -s << EOF
+  "$KMS_BASE_URL/rest/api/content/${PAGE_ID}" -s << EOF
 {
   "id": "${PAGE_ID}",
   "type": "page",
@@ -225,8 +225,8 @@ ENCODED_TITLE=$(python -c "import urllib.parse; print(urllib.parse.quote('工作
 ```bash
 # 按标题精确搜索（必须指定 spaceKey）
 curl -X GET \
-  -H "Authorization: Bearer $CVO_CONN_KMS_API_TOKEN" \
-  "$CVO_CONN_KMS_BASE_URL/rest/api/content?spaceKey=jiandaoyun&title=${ENCODED_TITLE}&expand=body.storage,version,space" \
+  -H "Authorization: Bearer $KMS_API_TOKEN" \
+  "$KMS_BASE_URL/rest/api/content?spaceKey=jiandaoyun&title=${ENCODED_TITLE}&expand=body.storage,version,space" \
   -s
 ```
 
@@ -246,8 +246,8 @@ curl -X GET \
 ```bash
 # 获取所有可访问的 space
 curl -X GET \
-  -H "Authorization: Bearer $CVO_CONN_KMS_API_TOKEN" \
-  "$CVO_CONN_KMS_BASE_URL/rest/api/space?limit=50" \
+  -H "Authorization: Bearer $KMS_API_TOKEN" \
+  "$KMS_BASE_URL/rest/api/space?limit=50" \
   -s
 ```
 
@@ -268,8 +268,18 @@ curl -X GET \
 ```bash
 # 获取某页面的所有子页面
 curl -X GET \
-  -H "Authorization: Bearer $CVO_CONN_KMS_API_TOKEN" \
-  "$CVO_CONN_KMS_BASE_URL/rest/api/content/${PAGE_ID}/child/page?expand=version&limit=100" \
+  -H "Authorization: Bearer $KMS_API_TOKEN" \
+  "$KMS_BASE_URL/rest/api/content/${PAGE_ID}/child/page?expand=version&limit=100" \
+  -s
+```
+
+### 功能 7: 删除页面
+
+```bash
+# 删除页面（需要管理员权限）
+curl -X DELETE \
+  -H "Authorization: Bearer $KMS_API_TOKEN" \
+  "$KMS_BASE_URL/rest/api/content/${PAGE_ID}" \
   -s
 ```
 
@@ -378,11 +388,11 @@ curl -X GET \
 **解决方案：**
 ```bash
 # ❌ 错误方式
-curl "$CVO_CONN_KMS_BASE_URL/rest/api/content?title=工作相关-赵文轩"
+curl "$KMS_BASE_URL/rest/api/content?title=工作相关-赵文轩"
 
 # ✅ 正确方式
 ENCODED_TITLE=$(python -c "import urllib.parse; print(urllib.parse.quote('工作相关-赵文轩'))")
-curl "$CVO_CONN_KMS_BASE_URL/rest/api/content?title=${ENCODED_TITLE}"
+curl "$KMS_BASE_URL/rest/api/content?title=${ENCODED_TITLE}"
 ```
 
 ### ❌ 问题 2: 创建页面返回 500 错误
@@ -408,8 +418,8 @@ curl "$CVO_CONN_KMS_BASE_URL/rest/api/content?title=${ENCODED_TITLE}"
 **解决方案：**
 ```bash
 # 1. 先获取当前版本号
-CURRENT=$(curl -s -H "Authorization: Bearer $CVO_CONN_KMS_API_TOKEN" \
-  "$CVO_CONN_KMS_BASE_URL/rest/api/content/${PAGE_ID}?expand=version" | \
+CURRENT=$(curl -s -H "Authorization: Bearer $KMS_API_TOKEN" \
+  "$KMS_BASE_URL/rest/api/content/${PAGE_ID}?expand=version" | \
   python -m json.tool | grep '"number"' | head -1 | grep -o '[0-9]*')
 
 # 2. 计算新版本号
@@ -429,7 +439,7 @@ NEW_VERSION=$((CURRENT + 1))
 
 **验证命令：**
 ```bash
-echo "Token: $CVO_CONN_KMS_API_TOKEN"
+echo "Token: $KMS_API_TOKEN"
 ```
 
 ### ❌ 问题 5: 找不到页面（按标题搜索）
@@ -439,10 +449,10 @@ echo "Token: $CVO_CONN_KMS_API_TOKEN"
 **解决方案：**
 ```bash
 # ❌ 可能搜不到
-curl "$CVO_CONN_KMS_BASE_URL/rest/api/content?title=${TITLE}"
+curl "$KMS_BASE_URL/rest/api/content?title=${TITLE}"
 
 # ✅ 指定 space
-curl "$CVO_CONN_KMS_BASE_URL/rest/api/content?spaceKey=jiandaoyun&title=${TITLE}"
+curl "$KMS_BASE_URL/rest/api/content?spaceKey=jiandaoyun&title=${TITLE}"
 ```
 
 ## 错误处理
@@ -561,5 +571,5 @@ Claude: [调用 space API，列出所有可访问的空间及其 key]
 - ✅ 更新页面时版本号必须正确
 - ✅ 搜索时指定 spaceKey 提高准确性
 - ⚠️ 大规模操作前先在测试环境验证
-- ⚠️ 创建/更新页面必须限制在 Avince（pageId: 1352284265）下
-- ⚠️ 更新页面前需确认该页面是否在 Avince 子树下
+- ⚠️ 遵守公司的 KMS 使用规范
+- ⚠️ 删除操作不可逆，谨慎使用
